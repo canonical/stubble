@@ -92,17 +92,6 @@ EFI_STATUS linux_exec(
         assert(iovec_is_valid(initrd));
 
         err = pe_kernel_info(kernel->iov_base, &entry_point, &compat_entry_point, &image_base, &kernel_size_in_memory);
-#if defined(__i386__) || defined(__x86_64__)
-        if (err == EFI_UNSUPPORTED)
-                /* Kernel is too old to support LINUX_INITRD_MEDIA_GUID, try the deprecated EFI handover
-                 * protocol. */
-                return linux_exec_efi_handover(
-                                parent,
-                                cmdline,
-                                kernel,
-                                initrd,
-                                kernel_size_in_memory);
-#endif
         if (err != EFI_SUCCESS)
                 return log_error_status(err, "Bad kernel image: %m");
 
