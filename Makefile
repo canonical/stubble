@@ -33,7 +33,7 @@ LDFLAGS += -m64
 OBJS = cpio.o devicetree.o device-path-util.o efi-efivars.o efi-log.o efi-string.o export-vars.o linux.o \
     part-discovery.o pe.o shim.o splash.o string-util-fundamental.o stub.o  url-discovery.o util.o uki.o \
     random-seed.o smbios.o secure-boot.o initrd.o graphics.o linux_x86.o efi-firmware.o chid.o \
-    sha256-fundamental.o efivars-fundamental.o console.o vmm.o edid.o chid-fundamental.o sha1-fundamental.o \
+    sha256-fundamental.o console.o vmm.o edid.o chid-fundamental.o sha1-fundamental.o \
     drivers.o
 
 all: stub.efi

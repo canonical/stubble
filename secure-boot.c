@@ -18,23 +18,6 @@ bool secure_boot_enabled(void) {
         return err == EFI_SUCCESS && secure;
 }
 
-SecureBootMode secure_boot_mode(void) {
-        bool secure, audit = false, deployed = false, setup = false;
-        EFI_STATUS err;
-
-        err = efivar_get_boolean_u8(MAKE_GUID_PTR(EFI_GLOBAL_VARIABLE), u"SecureBoot", &secure);
-        if (err != EFI_SUCCESS)
-                return SECURE_BOOT_UNSUPPORTED;
-
-        /* We can assume false for all these if they are abscent (AuditMode and
-         * DeployedMode may not exist on older firmware). */
-        (void) efivar_get_boolean_u8(MAKE_GUID_PTR(EFI_GLOBAL_VARIABLE), u"AuditMode", &audit);
-        (void) efivar_get_boolean_u8(MAKE_GUID_PTR(EFI_GLOBAL_VARIABLE), u"DeployedMode", &deployed);
-        (void) efivar_get_boolean_u8(MAKE_GUID_PTR(EFI_GLOBAL_VARIABLE), u"SetupMode", &setup);
-
-        return decode_secure_boot_mode(secure, audit, deployed, setup);
-}
-
 /*
  * Custom mode allows the secure boot certificate databases db, dbx, KEK, and PK to be changed without the variable
  * updates being signed. When enrolling certificates to an unconfigured system (no PK present yet) writing

@@ -37,18 +37,3 @@
 #define EFI_STUB_FEATURE_MULTI_PROFILE_UKI         (UINT64_C(1) << 9)
 #define EFI_STUB_FEATURE_REPORT_STUB_PARTITION     (UINT64_C(1) << 10)
 #define EFI_STUB_FEATURE_REPORT_URL                (UINT64_C(1) << 11)
-
-typedef enum SecureBootMode {
-        SECURE_BOOT_UNSUPPORTED,
-        SECURE_BOOT_DISABLED,
-        SECURE_BOOT_UNKNOWN,
-        SECURE_BOOT_AUDIT,
-        SECURE_BOOT_DEPLOYED,
-        SECURE_BOOT_SETUP,
-        SECURE_BOOT_USER,
-        _SECURE_BOOT_MAX,
-        _SECURE_BOOT_INVALID = -EINVAL,
-} SecureBootMode;
-
-const sd_char *secure_boot_mode_to_string(SecureBootMode m);
-SecureBootMode decode_secure_boot_mode(bool secure, bool audit, bool deployed, bool setup);
