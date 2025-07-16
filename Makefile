@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-CFLAGS += -DSD_BOOT=1
 CFLAGS += -DRELATIVE_SOURCE_PATH="\".\""
 CFLAGS += -DGIT_VERSION=\"1\"
 CFLAGS += -fno-strict-aliasing

@@ -2,16 +2,8 @@
 
 #include "efi-string.h"
 
-#if SD_BOOT
-#  include "proto/simple-text-io.h"
-#  include "util.h"
-#else
-#  include <stdlib.h>
-
-#  include "alloc-util.h"
-#  define xnew(t, n) ASSERT_SE_PTR(new(t, n))
-#  define xmalloc(n) ASSERT_SE_PTR(malloc(n))
-#endif
+#include "proto/simple-text-io.h"
+#include "util.h"
 
 /* String functions for both char and char16_t that should behave the same way as their respective
  * counterpart in userspace. Where it makes sense, these accept NULL and do something sensible whereas
@@ -737,12 +729,8 @@ static bool push_num(FormatContext *ctx, SpecifierContext *sp, uint64_t u) {
 }
 
 /* This helps unit testing. */
-#if SD_BOOT
-#  define NULLSTR "(null)"
-#  define wcsnlen strnlen16
-#else
-#  define NULLSTR "(nil)"
-#endif
+#define NULLSTR "(null)"
+#define wcsnlen strnlen16
 
 static bool handle_format_specifier(FormatContext *ctx, SpecifierContext *sp) {
         /* Parses one item from the format specifier in ctx and put the info into sp. If we are done with
@@ -982,9 +970,7 @@ _printf_(2, 0) static char16_t *printf_internal(EFI_STATUS status, const char *f
                 return ret_buf;
         }
 
-#if SD_BOOT
         ST->ConOut->OutputString(ST->ConOut, ctx.buf);
-#endif
 
         return mfree(ctx.dyn_buf);
 }
@@ -1012,7 +998,6 @@ char16_t *xvasprintf_status(EFI_STATUS status, const char *format, va_list ap) {
         return printf_internal(status, format, ap, true);
 }
 
-#if SD_BOOT
 /* To provide the actual implementation for these we need to remove the redirection to the builtins. */
 #  undef memchr
 #  undef memcmp
@@ -1022,13 +1007,6 @@ _used_ void *memchr(const void *p, int c, size_t n);
 _used_ int memcmp(const void *p1, const void *p2, size_t n);
 _used_ void *memcpy(void * restrict dest, const void * restrict src, size_t n);
 _used_ void *memset(void *p, int c, size_t n);
-#else
-/* And for userspace unit testing we need to give them an efi_ prefix. */
-#  define memchr efi_memchr
-#  define memcmp efi_memcmp
-#  define memcpy efi_memcpy
-#  define memset efi_memset
-#endif
 
 void *memchr(const void *p, int c, size_t n) {
         if (!p || n == 0)
@@ -1066,7 +1044,6 @@ void *memcpy(void * restrict dest, const void * restrict src, size_t n) {
         if (!dest || !src || n == 0)
                 return dest;
 
-#if SD_BOOT
         /* The firmware-provided memcpy is likely optimized, so use that. The function is guaranteed to be
          * available by the UEFI spec. We still make it depend on the boot services pointer being set just in
          * case the compiler emits a call before it is available. */
@@ -1074,7 +1051,6 @@ void *memcpy(void * restrict dest, const void * restrict src, size_t n) {
                 BS->CopyMem(dest, (void *) src, n);
                 return dest;
         }
-#endif
 
         uint8_t *d = dest;
         const uint8_t *s = src;
@@ -1093,13 +1069,11 @@ void *memset(void *p, int c, size_t n) {
         if (!p || n == 0)
                 return p;
 
-#if SD_BOOT
         /* See comment in efi_memcpy. Note that the signature has c and n swapped! */
         if (_likely_(BS)) {
                 BS->SetMem(p, n, c);
                 return p;
         }
-#endif
 
         uint8_t *q = p;
         while (n > 0) {

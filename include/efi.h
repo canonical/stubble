@@ -14,7 +14,6 @@
 #include "efi-fundamental.h"            /* IWYU pragma: export */
 #include "macro-fundamental.h"          /* IWYU pragma: export */
 
-#if SD_BOOT
 /* uchar.h/wchar.h are not suitable for freestanding environments. */
 typedef __WCHAR_TYPE__ wchar_t;
 typedef __CHAR16_TYPE__ char16_t;
@@ -42,12 +41,8 @@ assert_cc(alignof(wchar_t) == 2);
 assert_cc(alignof(char16_t) == 2);
 assert_cc(alignof(char32_t) == 4);
 
-#  if defined(__x86_64__) && defined(__ILP32__)
-#    error Building for x64 requires -m64 on x32 ABI.
-#  endif
-#else
-#  include <uchar.h>
-#  include <wchar.h>
+#if defined(__x86_64__) && defined(__ILP32__)
+#  error Building for x64 requires -m64 on x32 ABI.
 #endif
 
 struct iovec;

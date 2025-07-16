@@ -1,14 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #pragma once
 
-#if SD_BOOT
-#  include "efi-string.h"
-#  include "util.h"
-#else
-#  include <stddef.h>
-#  include <stdint.h>
-#  include <uchar.h>
-#endif
+#include "efi-string.h"
+#include "util.h"
 
 #include "macro-fundamental.h"
 

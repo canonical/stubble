@@ -132,44 +132,43 @@ _gnu_printf_(2, 0) void vprintf_status(EFI_STATUS status, const char *format, va
 _gnu_printf_(2, 3) _warn_unused_result_ char16_t *xasprintf_status(EFI_STATUS status, const char *format, ...);
 _gnu_printf_(2, 0) _warn_unused_result_ char16_t *xvasprintf_status(EFI_STATUS status, const char *format, va_list ap);
 
-#if SD_BOOT
-#  define printf(...) printf_status(EFI_SUCCESS, __VA_ARGS__)
-#  define xasprintf(...) xasprintf_status(EFI_SUCCESS, __VA_ARGS__)
+#define printf(...) printf_status(EFI_SUCCESS, __VA_ARGS__)
+#define xasprintf(...) xasprintf_status(EFI_SUCCESS, __VA_ARGS__)
 
 /* inttypes.h is provided by libc instead of the compiler and is not supposed to be used in freestanding
  * environments. We could use clang __*_FMT*__ constants for this, bug gcc does not have them. :( */
 
-#  if defined(__ILP32__) || defined(__arm__) || defined(__i386__)
-#    define PRI64_PREFIX "ll"
-#  elif defined(__LP64__)
-#    define PRI64_PREFIX "l"
-#  elif defined(__LLP64__) || (__SIZEOF_LONG__ == 4 && __SIZEOF_POINTER__ == 8)
-#    define PRI64_PREFIX "ll"
-#  else
-#    error Unknown 64-bit data model
-#  endif
+#if defined(__ILP32__) || defined(__arm__) || defined(__i386__)
+#  define PRI64_PREFIX "ll"
+#elif defined(__LP64__)
+#  define PRI64_PREFIX "l"
+#elif defined(__LLP64__) || (__SIZEOF_LONG__ == 4 && __SIZEOF_POINTER__ == 8)
+#  define PRI64_PREFIX "ll"
+#else
+#  error Unknown 64-bit data model
+#endif
 
-#  define PRIi32 "i"
-#  define PRIu32 "u"
-#  define PRIx32 "x"
-#  define PRIX32 "X"
-#  define PRIiPTR "zi"
-#  define PRIuPTR "zu"
-#  define PRIxPTR "zx"
-#  define PRIXPTR "zX"
-#  define PRIi64 PRI64_PREFIX "i"
-#  define PRIu64 PRI64_PREFIX "u"
-#  define PRIx64 PRI64_PREFIX "x"
-#  define PRIX64 PRI64_PREFIX "X"
+#define PRIi32 "i"
+#define PRIu32 "u"
+#define PRIx32 "x"
+#define PRIX32 "X"
+#define PRIiPTR "zi"
+#define PRIuPTR "zu"
+#define PRIxPTR "zx"
+#define PRIXPTR "zX"
+#define PRIi64 PRI64_PREFIX "i"
+#define PRIu64 PRI64_PREFIX "u"
+#define PRIx64 PRI64_PREFIX "x"
+#define PRIX64 PRI64_PREFIX "X"
 
 /* The compiler normally has knowledge about standard functions such as memcmp, but this is not the case when
  * compiling with -ffreestanding. By referring to builtins, the compiler can check arguments and do
  * optimizations again. Note that we still need to provide implementations as the compiler is free to not
  * inline its own implementation and instead issue a library call. */
-#  define memchr __builtin_memchr
-#  define memcmp __builtin_memcmp
-#  define memcpy __builtin_memcpy
-#  define memset __builtin_memset
+#define memchr __builtin_memchr
+#define memcmp __builtin_memcmp
+#define memcpy __builtin_memcpy
+#define memset __builtin_memset
 
 static inline void *mempcpy(void * restrict dest, const void * restrict src, size_t n) {
         if (!dest || !src || n == 0)
@@ -177,11 +176,3 @@ static inline void *mempcpy(void * restrict dest, const void * restrict src, siz
         memcpy(dest, src, n);
         return (uint8_t *) dest + n;
 }
-
-#else
-/* For unit testing. */
-void *efi_memchr(const void *p, int c, size_t n);
-int efi_memcmp(const void *p1, const void *p2, size_t n);
-void *efi_memcpy(void * restrict dest, const void * restrict src, size_t n);
-void *efi_memset(void *p, int c, size_t n);
-#endif

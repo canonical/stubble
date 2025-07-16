@@ -1,12 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #pragma once
 
-#if SD_BOOT
-#  include "efi.h"
-#  include "efi-string.h"
-#else
-#  include <string.h>
-#endif
+#include "efi.h"
+#include "efi-string.h"
 
 #include "assert-fundamental.h"
 #include "macro-fundamental.h"
@@ -28,20 +24,15 @@
 #define URI_UNRESERVED      ALPHANUMERICAL "-._~"       /* [RFC3986] */
 #define URI_VALID           URI_RESERVED URI_UNRESERVED /* [RFC3986] */
 
-#if SD_BOOT
-#  define strlen strlen16
-#  define strcmp strcmp16
-#  define strncmp strncmp16
-#  define strcasecmp strcasecmp16
-#  define strncasecmp strncasecmp16
-#  define strspn strspn16
-#  define strcspn strcspn16
-#  define STR_C(str)       (L ## str)
+#define strlen strlen16
+#define strcmp strcmp16
+#define strncmp strncmp16
+#define strcasecmp strcasecmp16
+#define strncasecmp strncasecmp16
+#define strspn strspn16
+#define strcspn strcspn16
+#define STR_C(str)       (L ## str)
 typedef char16_t sd_char;
-#else
-#  define STR_C(str)       (str)
-typedef char sd_char;
-#endif
 
 #define streq(a,b) (strcmp((a),(b)) == 0)
 #define strneq(a, b, n) (strncmp((a), (b), (n)) == 0)

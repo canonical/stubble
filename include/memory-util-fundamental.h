@@ -3,11 +3,7 @@
 
 #include <stddef.h>
 
-#if SD_BOOT
-#  include "efi-string.h"
-#else
-#  include <string.h>
-#endif
+#include "efi-string.h"
 
 #include "assert-fundamental.h"
 #include "cleanup-fundamental.h"
@@ -19,14 +15,6 @@
                 _l_ > 0 ? memset((x), 0, _l_) : (x);            \
         })
 
-#if !SD_BOOT
-static inline void *explicit_bzero_safe(void *p, size_t l) {
-        if (p && l > 0)
-                explicit_bzero(p, l);
-
-        return p;
-}
-#else
 static inline void *explicit_bzero_safe(void *p, size_t l) {
         if (p && l > 0) {
                 memset(p, 0, l);
@@ -34,7 +22,6 @@ static inline void *explicit_bzero_safe(void *p, size_t l) {
         }
         return p;
 }
-#endif
 
 struct VarEraser {
         /* NB: This is a pointer to memory to erase in case of CLEANUP_ERASE(). Pointer to pointer to memory

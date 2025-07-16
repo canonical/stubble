@@ -11,14 +11,6 @@ typedef struct {
         uint8_t Data4[8];
 } EFI_GUID;
 
-#if !SD_BOOT
-#  include <stdbool.h>
-#  include <string.h>
-static inline bool efi_guid_equal(const EFI_GUID *a, const EFI_GUID *b) {
-        return memcmp(a, b, sizeof(EFI_GUID)) == 0;
-}
-#endif
-
 typedef struct {
         EFI_GUID SignatureOwner;
         uint8_t	SignatureData[];

@@ -14,15 +14,8 @@
  * https://github.com/aarch64-laptops/edk2/blob/dtbloader-app/EmbeddedPkg/Application/ConfigTableLoader/CHID.c
  */
 
-#if SD_BOOT
-#  include "efi-string.h"
-#  include "util.h"
-#else
-#  include <byteswap.h>
-#  include <string.h>
-#  include <utf8.h>
-#define strlen16 char16_strlen
-#endif
+#include "efi-string.h"
+#include "util.h"
 
 #include "chid-fundamental.h"
 #include "macro-fundamental.h"

@@ -4,8 +4,6 @@
 #include "efi.h"
 #include "memory-util-fundamental.h"
 
-#if SD_BOOT
-
 #include "proto/file-io.h"
 
 /* This is provided by the linker. */
@@ -238,13 +236,5 @@ char16_t *get_extra_dir(const EFI_DEVICE_PATH *file_path);
 
 #define bswap_16(x) __builtin_bswap16(x)
 #define bswap_32(x) __builtin_bswap32(x)
-
-#else
-
-#include "alloc-util.h"
-
-#define xnew0(type, n) ASSERT_PTR(new0(type, n))
-
-#endif
 
 char16_t *url_replace_last_component(const char16_t *url, const char16_t *filename);

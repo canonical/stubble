@@ -17,9 +17,7 @@
 #include "chid.h"
 #include "chid-fundamental.h"
 #include "edid.h"
-#if SD_BOOT
 #include "efi-log.h"
-#endif
 #include "efi-string.h"
 #include "smbios.h"
 #include "util.h"
@@ -109,11 +107,7 @@ EFI_STATUS chid_match(const void *hwid_buffer, size_t hwid_length, uint32_t matc
 
         status = populate_board_chids(chids);
         if (EFI_STATUS_IS_ERROR(status))
-#if SD_BOOT
                 return log_error_status(status, "Failed to populate board CHIDs: %m");
-#else
-                return status;
-#endif
 
         size_t n_devices = 0;
 

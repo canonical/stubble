@@ -1,11 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #pragma once
 
-#ifdef SD_BOOT
-#  define EINVAL 22
-#else
-#  include <errno.h>
-#endif
+#define EINVAL 22
 #include "string-util-fundamental.h"
 
 /* Features of the loader, i.e. systemd-boot */
