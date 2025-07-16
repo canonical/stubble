@@ -2,7 +2,6 @@
 
 #include "efi-efivars.h"
 #include "efi-string.h"
-#include "ticks.h"
 #include "util.h"
 
 EFI_STATUS efivar_set_raw(const EFI_GUID *vendor, const char16_t *name, const void *buf, size_t size, uint32_t flags) {
@@ -217,19 +216,6 @@ EFI_STATUS efivar_get_boolean_u8(const EFI_GUID *vendor, const char16_t *name, b
                 *ret = *b > 0;
 
         return EFI_SUCCESS;
-}
-
-void efivar_set_time_usec(const EFI_GUID *vendor, const char16_t *name, uint64_t usec) {
-        assert(vendor);
-        assert(name);
-
-        if (usec == 0)
-                usec = time_usec();
-        if (usec == 0)
-                return;
-
-        _cleanup_free_ char16_t *str = xasprintf("%" PRIu64, usec);
-        efivar_set_str16(vendor, name, str, 0);
 }
 
 uint64_t get_os_indications_supported(void) {
