@@ -38,9 +38,7 @@ enum {
         INITRD_CREDENTIAL = _INITRD_DYNAMIC_FIRST,
         INITRD_GLOBAL_CREDENTIAL,
         INITRD_SYSEXT,
-        INITRD_GLOBAL_SYSEXT,
         INITRD_CONFEXT,
-        INITRD_GLOBAL_CONFEXT,
         INITRD_PCRSIG,
         INITRD_PCRPKEY,
         INITRD_OSREL,
@@ -781,10 +779,12 @@ static void cmdline_append_and_measure_smbios(char16_t **cmdline, int *parameter
         assert(cmdline);
         assert(parameters_measured);
 
+#if 0
         /* SMBIOS OEM Strings data is controlled by the host admin and not covered by the VM attestation, so
          * MUST NOT be trusted when in a confidential VM */
         if (is_confidential_vm())
                 return;
+#endif
 
         const char *extra = smbios_find_oem_string("io.systemd.stub.kernel-cmdline-extra=", /* after= */ NULL);
         if (!extra)
@@ -872,19 +872,6 @@ static void generate_sidecar_initrds(
                 combine_measured_flag(sysext_measured, m);
 
         if (pack_cpio(loaded_image,
-                      u"\\loader\\extensions",
-                      u".sysext.raw",
-                      /* exclude_suffix= */ NULL,
-                      ".extra/global_sysext",
-                      /* dir_mode= */ 0555,
-                      /* access_mode= */ 0444,
-                      /* tpm_pcr= */ TPM2_PCR_SYSEXTS,
-                      u"Global system extension initrd",
-                      initrds + INITRD_GLOBAL_SYSEXT,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(sysext_measured, m);
-
-        if (pack_cpio(loaded_image,
                       /* dropin_dir= */ NULL,
                       u".confext.raw",
                       /* exclude_suffix= */ NULL,
@@ -894,19 +881,6 @@ static void generate_sidecar_initrds(
                       /* tpm_pcr= */ TPM2_PCR_KERNEL_CONFIG,
                       u"Configuration extension initrd",
                       initrds + INITRD_CONFEXT,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(confext_measured, m);
-
-        if (pack_cpio(loaded_image,
-                      u"\\loader\\extensions",
-                      u".confext.raw",
-                      /* exclude_suffix= */ NULL,
-                      ".extra/global_confext",
-                      /* dir_mode= */ 0555,
-                      /* access_mode= */ 0444,
-                      /* tpm_pcr= */ TPM2_PCR_KERNEL_CONFIG,
-                      u"Global configuration extension initrd",
-                      initrds + INITRD_GLOBAL_CONFEXT,
                       &m) == EFI_SUCCESS)
                 combine_measured_flag(confext_measured, m);
 }
@@ -1168,7 +1142,11 @@ static void settle_command_line(
          * a cmdline baked into the UKI or we are in confidential VM mode. */
 
         if (!isempty(*cmdline)) {
-                if (secure_boot_enabled() && (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_CMDLINE) || is_confidential_vm()))
+                if (secure_boot_enabled() && (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_CMDLINE)
+#if 0
+		    || is_confidential_vm()
+#endif
+		    ))
                         /* Drop the custom cmdline */
                         *cmdline = mfree(*cmdline);
                 else {

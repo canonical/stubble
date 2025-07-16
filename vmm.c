@@ -4,7 +4,9 @@
 #  include <cpuid.h>
 #endif
 
+#if 0
 #include "confidential-virt-fundamental.h"
+#endif
 #include "device-path-util.h"
 #include "drivers.h"
 #include "efi-string.h"
@@ -144,6 +146,7 @@ bool in_hypervisor(void) {
         return cache;
 }
 
+#if 0
 #if defined(__i386__) || defined(__x86_64__)
 static uint32_t cpuid_leaf(uint32_t eax, char ret_sig[static 13], bool swapped) {
         /* zero-init as some queries explicitly require subleaf == 0 */
@@ -262,3 +265,4 @@ bool is_confidential_vm(void) {
 
         return false;
 }
+#endif
