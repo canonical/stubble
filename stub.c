@@ -47,7 +47,7 @@ enum {
 };
 
 /* magic string to find in the binary image */
-DECLARE_NOALLOC_SECTION(".sdmagic", "#### LoaderInfo: systemd-stub " GIT_VERSION " ####");
+DECLARE_NOALLOC_SECTION(".sdmagic", "#### LoaderInfo: ubustub " GIT_VERSION " ####");
 
 DECLARE_SBAT(SBAT_STUB_SECTION_TEXT);
 
@@ -160,7 +160,7 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsig
 
         /* add StubInfo (this is one is owned by the stub, hence we unconditionally override this with our
          * own data) */
-        (void) efivar_set_str16(MAKE_GUID_PTR(LOADER), u"StubInfo", u"systemd-stub " GIT_VERSION, 0);
+        (void) efivar_set_str16(MAKE_GUID_PTR(LOADER), u"StubInfo", u"ubustub " GIT_VERSION, 0);
 
         (void) efivar_set_uint64_le(MAKE_GUID_PTR(LOADER), u"StubFeatures", stub_features, 0);
 
@@ -1290,4 +1290,4 @@ static EFI_STATUS run(EFI_HANDLE image) {
         return err;
 }
 
-DEFINE_EFI_MAIN_FUNCTION(run, "systemd-stub", /* wait_for_debugger= */ false);
+DEFINE_EFI_MAIN_FUNCTION(run, "ubustub", /* wait_for_debugger= */ false);
