@@ -27,25 +27,6 @@
 #include "version.h"
 #include "vmm.h"
 
-/* The list of initrds we combine into one, in the order we want to merge them */
-enum {
-        /* The first two are part of the PE binary */
-        INITRD_UCODE,
-        INITRD_BASE,
-
-        /* The rest are dynamically generated, and hence in dynamic memory */
-        _INITRD_DYNAMIC_FIRST,
-        INITRD_CREDENTIAL = _INITRD_DYNAMIC_FIRST,
-        INITRD_GLOBAL_CREDENTIAL,
-        INITRD_SYSEXT,
-        INITRD_CONFEXT,
-        INITRD_PCRSIG,
-        INITRD_PCRPKEY,
-        INITRD_OSREL,
-        INITRD_PROFILE,
-        _INITRD_MAX,
-};
-
 /* magic string to find in the binary image */
 DECLARE_NOALLOC_SECTION(".sdmagic", "#### LoaderInfo: ubustub " GIT_VERSION " ####");
 
@@ -94,50 +75,6 @@ static void combine_measured_flag(int *value, int measured) {
                 return;
 
         *value = *value < 0 ? measured : *value && measured;
-}
-
-/* Combine initrds by concatenation in memory */
-static EFI_STATUS combine_initrds(
-                const struct iovec initrds[], size_t n_initrds,
-                Pages *ret_initrd_pages, size_t *ret_initrd_size) {
-
-        size_t n = 0;
-
-        assert(initrds || n_initrds == 0);
-        assert(ret_initrd_pages);
-        assert(ret_initrd_size);
-
-        FOREACH_ARRAY(i, initrds, n_initrds) {
-                /* some initrds (the ones from UKI sections) need padding, pad all to be safe */
-                size_t initrd_size = ALIGN4(i->iov_len);
-                if (n > SIZE_MAX - initrd_size)
-                        return EFI_OUT_OF_RESOURCES;
-
-                n += initrd_size;
-        }
-
-        _cleanup_pages_ Pages pages = xmalloc_initrd_pages(n);
-        uint8_t *p = PHYSICAL_ADDRESS_TO_POINTER(pages.addr);
-
-        FOREACH_ARRAY(i, initrds, n_initrds) {
-                size_t pad;
-
-                p = mempcpy(p, i->iov_base, i->iov_len);
-
-                pad = ALIGN4(i->iov_len) - i->iov_len;
-                if (pad == 0)
-                        continue;
-
-                memzero(p, pad);
-                p += pad;
-        }
-
-        assert(PHYSICAL_ADDRESS_TO_POINTER(pages.addr + n) == p);
-
-        *ret_initrd_pages = TAKE_STRUCT(pages);
-        *ret_initrd_size = n;
-
-        return EFI_SUCCESS;
 }
 
 static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsigned profile) {
@@ -454,93 +391,6 @@ static inline void iovec_array_extend(struct iovec **arr, size_t *n_arr, struct 
         (*arr)[(*n_arr)++] = elem;
 }
 
-static void measure_and_append_initrd_addons(
-                struct iovec **all_initrds,
-                size_t *n_all_initrds,
-                const NamedAddon *initrd_addons,
-                size_t n_initrd_addons,
-                int *sections_measured) {
-
-        EFI_STATUS err;
-
-        assert(all_initrds);
-        assert(n_all_initrds);
-        assert(initrd_addons || n_initrd_addons == 0);
-        assert(sections_measured);
-
-        FOREACH_ARRAY(i, initrd_addons, n_initrd_addons) {
-                bool m = false;
-                err = tpm_log_tagged_event(
-                                TPM2_PCR_KERNEL_CONFIG,
-                                POINTER_TO_PHYSICAL_ADDRESS(i->blob.iov_base),
-                                i->blob.iov_len,
-                                INITRD_ADDON_EVENT_TAG_ID,
-                                i->filename,
-                                &m);
-                if (err != EFI_SUCCESS)
-                        return (void) log_error_status(
-                                        err,
-                                        "Unable to extend PCR %i with INITRD addon '%ls': %m",
-                                        TPM2_PCR_KERNEL_CONFIG,
-                                        i->filename);
-
-                combine_measured_flag(sections_measured, m);
-
-                iovec_array_extend(all_initrds, n_all_initrds, i->blob);
-        }
-}
-
-static void measure_and_append_ucode_addons(
-                struct iovec **all_initrds,
-                size_t *n_all_initrds,
-                const NamedAddon *ucode_addons,
-                size_t n_ucode_addons,
-                int *sections_measured) {
-
-        EFI_STATUS err;
-
-        assert(all_initrds);
-        assert(n_all_initrds);
-        assert(ucode_addons || n_ucode_addons == 0);
-        assert(sections_measured);
-
-        /* Ucode addons need to be measured and copied into all_initrds in reverse order,
-         * the kernel takes the first one it finds. */
-        for (ssize_t i = n_ucode_addons - 1; i >= 0; i--) {
-                bool m = false;
-                err = tpm_log_tagged_event(
-                                TPM2_PCR_KERNEL_CONFIG,
-                                POINTER_TO_PHYSICAL_ADDRESS(ucode_addons[i].blob.iov_base),
-                                ucode_addons[i].blob.iov_len,
-                                UCODE_ADDON_EVENT_TAG_ID,
-                                ucode_addons[i].filename,
-                                &m);
-                if (err != EFI_SUCCESS)
-                        return (void) log_error_status(
-                                        err,
-                                        "Unable to extend PCR %i with UCODE addon '%ls': %m",
-                                        TPM2_PCR_KERNEL_CONFIG,
-                                        ucode_addons[i].filename);
-
-                combine_measured_flag(sections_measured, m);
-
-                iovec_array_extend(all_initrds, n_all_initrds, ucode_addons[i].blob);
-        }
-}
-
-static void extend_initrds(
-                const struct iovec initrds[static _INITRD_MAX],
-                struct iovec **all_initrds,
-                size_t *n_all_initrds) {
-
-        assert(initrds);
-        assert(all_initrds);
-        assert(n_all_initrds);
-
-        FOREACH_ARRAY(i, initrds, _INITRD_MAX)
-                iovec_array_extend(all_initrds, n_all_initrds, *i);
-}
-
 static EFI_STATUS load_addons(
                 EFI_HANDLE stub_image,
                 EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
@@ -548,11 +398,7 @@ static EFI_STATUS load_addons(
                 const char *uname,
                 char16_t **cmdline,                         /* Both input+output, extended with new addons we find */
                 NamedAddon **devicetree_addons,             /* Ditto */
-                size_t *n_devicetree_addons,
-                NamedAddon **initrd_addons,                 /* Ditto */
-                size_t *n_initrd_addons,
-                NamedAddon **ucode_addons,                  /* Ditto */
-                size_t *n_ucode_addons) {
+                size_t *n_devicetree_addons) {
 
         _cleanup_strv_free_ char16_t **items = NULL;
         _cleanup_file_close_ EFI_FILE *root = NULL;
@@ -618,13 +464,11 @@ static EFI_STATUS load_addons(
                 if (err != EFI_SUCCESS ||
                     (!PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_CMDLINE) &&
                      !PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_DTB) &&
-                     !PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_DTBAUTO) &&
-                     !PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_INITRD) &&
-                     !PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_UCODE))) {
+                     !PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_DTBAUTO))) {
                         if (err == EFI_SUCCESS)
                                 err = EFI_NOT_FOUND;
                         log_error_status(err,
-                                         "Unable to locate embedded .cmdline/.dtb/.dtbauto/.initrd/.ucode sections in %ls, ignoring: %m",
+                                         "Unable to locate embedded .cmdline/.dtb/.dtbauto sections in %ls, ignoring: %m",
                                          items[i]);
                         continue;
                 }
@@ -675,32 +519,6 @@ static EFI_STATUS load_addons(
                                 .blob = {
                                         .iov_base = xmemdup((const uint8_t*) loaded_addon->ImageBase + sections[UNIFIED_SECTION_DTB].memory_offset, sections[UNIFIED_SECTION_DTB].memory_size),
                                         .iov_len = sections[UNIFIED_SECTION_DTB].memory_size,
-                                },
-                                .filename = xstrdup16(items[i]),
-                        };
-                }
-
-                if (initrd_addons && PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_INITRD)) {
-                        *initrd_addons = xrealloc(*initrd_addons,
-                                                  *n_initrd_addons * sizeof(NamedAddon),
-                                                  (*n_initrd_addons + 1)  * sizeof(NamedAddon));
-                        (*initrd_addons)[(*n_initrd_addons)++] = (NamedAddon) {
-                                .blob = {
-                                        .iov_base = xmemdup((const uint8_t*) loaded_addon->ImageBase + sections[UNIFIED_SECTION_INITRD].memory_offset, sections[UNIFIED_SECTION_INITRD].memory_size),
-                                        .iov_len = sections[UNIFIED_SECTION_INITRD].memory_size,
-                                },
-                                .filename = xstrdup16(items[i]),
-                        };
-                }
-
-                if (ucode_addons && PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_UCODE)) {
-                        *ucode_addons = xrealloc(*ucode_addons,
-                                                 *n_ucode_addons * sizeof(NamedAddon),
-                                                 (*n_ucode_addons + 1)  * sizeof(NamedAddon));
-                        (*ucode_addons)[(*n_ucode_addons)++] = (NamedAddon) {
-                                .blob = {
-                                        .iov_base = xmemdup((const uint8_t*) loaded_addon->ImageBase + sections[UNIFIED_SECTION_UCODE].memory_offset, sections[UNIFIED_SECTION_UCODE].memory_size),
-                                        .iov_len = sections[UNIFIED_SECTION_UCODE].memory_size,
                                 },
                                 .filename = xstrdup16(items[i]),
                         };
@@ -808,157 +626,6 @@ static void cmdline_append_and_measure_smbios(char16_t **cmdline, int *parameter
                 *cmdline = xasprintf("%ls %ls", tmp, extra16);
 }
 
-static void initrds_free(struct iovec (*initrds)[_INITRD_MAX]) {
-        assert(initrds);
-
-        /* Free the dynamic initrds, but leave the non-dynamic ones around */
-
-        for (size_t i = _INITRD_DYNAMIC_FIRST; i < _INITRD_MAX; i++)
-                iovec_done((*initrds) + i);
-}
-
-static void generate_sidecar_initrds(
-                EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                struct iovec initrds[static _INITRD_MAX],
-                int *parameters_measured,
-                int *sysext_measured,
-                int *confext_measured) {
-
-        bool m;
-
-        assert(loaded_image);
-        assert(initrds);
-        assert(parameters_measured);
-        assert(sysext_measured);
-        assert(confext_measured);
-
-        if (pack_cpio(loaded_image,
-                      /* dropin_dir= */ NULL,
-                      u".cred",
-                      /* exclude_suffix= */ NULL,
-                      ".extra/credentials",
-                      /* dir_mode= */ 0500,
-                      /* access_mode= */ 0400,
-                      /* tpm_pcr= */ TPM2_PCR_KERNEL_CONFIG,
-                      u"Credentials initrd",
-                      initrds + INITRD_CREDENTIAL,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(parameters_measured, m);
-
-        if (pack_cpio(loaded_image,
-                      u"\\loader\\credentials",
-                      u".cred",
-                      /* exclude_suffix= */ NULL,
-                      ".extra/global_credentials",
-                      /* dir_mode= */ 0500,
-                      /* access_mode= */ 0400,
-                      /* tpm_pcr= */ TPM2_PCR_KERNEL_CONFIG,
-                      u"Global credentials initrd",
-                      initrds + INITRD_GLOBAL_CREDENTIAL,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(parameters_measured, m);
-
-        if (pack_cpio(loaded_image,
-                      /* dropin_dir= */ NULL,
-                      u".raw",         /* ideally we'd pick up only *.sysext.raw here, but for compat we pick up *.raw instead … */
-                      u".confext.raw", /* … but then exclude *.confext.raw again */
-                      ".extra/sysext",
-                      /* dir_mode= */ 0555,
-                      /* access_mode= */ 0444,
-                      /* tpm_pcr= */ TPM2_PCR_SYSEXTS,
-                      u"System extension initrd",
-                      initrds + INITRD_SYSEXT,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(sysext_measured, m);
-
-        if (pack_cpio(loaded_image,
-                      /* dropin_dir= */ NULL,
-                      u".confext.raw",
-                      /* exclude_suffix= */ NULL,
-                      ".extra/confext",
-                      /* dir_mode= */ 0555,
-                      /* access_mode= */ 0444,
-                      /* tpm_pcr= */ TPM2_PCR_KERNEL_CONFIG,
-                      u"Configuration extension initrd",
-                      initrds + INITRD_CONFEXT,
-                      &m) == EFI_SUCCESS)
-                combine_measured_flag(confext_measured, m);
-}
-
-static void generate_embedded_initrds(
-                EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                const PeSectionVector sections[static _UNIFIED_SECTION_MAX],
-                struct iovec initrds[static _INITRD_MAX]) {
-
-        static const struct {
-                UnifiedSection section;
-                size_t initrd_index;
-                const char16_t *filename;
-        } table[] = {
-                /* If the PCR signature was embedded in the PE image, then let's wrap it in a cpio and also pass it
-                 * to the kernel, so that it can be read from /.extra/tpm2-pcr-signature.json. Note that this section
-                 * is not measured, neither as raw section (see above), nor as cpio (here), because it is the
-                 * signature of expected PCR values, i.e. its input are PCR measurements, and hence it shouldn't
-                 * itself be input for PCR measurements. */
-                { UNIFIED_SECTION_PCRSIG,  INITRD_PCRSIG, u"tpm2-pcr-signature.json"  },
-
-                /* If the public key used for the PCR signatures was embedded in the PE image, then let's
-                 * wrap it in a cpio and also pass it to the kernel, so that it can be read from
-                 * /.extra/tpm2-pcr-public-key.pem. This section is already measured above, hence we won't
-                 * measure the cpio. */
-                { UNIFIED_SECTION_PCRPKEY, INITRD_PCRPKEY, u"tpm2-pcr-public-key.pem" },
-
-                /* If we boot a specific profile, let's place the chosen profile in a file that userspace can
-                 * make use of this information reasonably. */
-                { UNIFIED_SECTION_PROFILE, INITRD_PROFILE, u"profile"                 },
-
-                /* Similar, pass the .osrel section too. Userspace should have this information anyway, but
-                 * it's so nicely symmetric to the .profile section which we pass around, and who knows,
-                 * maybe this is useful to some. */
-                { UNIFIED_SECTION_OSREL,   INITRD_OSREL,   u"os-release"              },
-        };
-
-        assert(loaded_image);
-        assert(initrds);
-
-        FOREACH_ELEMENT(t, table) {
-                if (!PE_SECTION_VECTOR_IS_SET(sections + t->section))
-                        continue;
-
-                (void) pack_cpio_literal(
-                                (const uint8_t*) loaded_image->ImageBase + sections[t->section].memory_offset,
-                                sections[t->section].memory_size,
-                                ".extra",
-                                t->filename,
-                                /* dir_mode= */ 0555,
-                                /* access_mode= */ 0444,
-                                /* tpm_pcr= */ UINT32_MAX,
-                                /* tpm_description= */ NULL,
-                                initrds + t->initrd_index,
-                                /* ret_measured= */ NULL);
-        }
-}
-
-static void lookup_embedded_initrds(
-                EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                const PeSectionVector sections[static _UNIFIED_SECTION_MAX],
-                struct iovec initrds[static _INITRD_MAX]) {
-
-        assert(loaded_image);
-        assert(sections);
-        assert(initrds);
-
-        if (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_INITRD))
-                initrds[INITRD_BASE] = IOVEC_MAKE(
-                                (const uint8_t*) loaded_image->ImageBase + sections[UNIFIED_SECTION_INITRD].memory_offset,
-                                sections[UNIFIED_SECTION_INITRD].memory_size);
-
-        if (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_UCODE))
-                initrds[INITRD_UCODE] = IOVEC_MAKE(
-                                (const uint8_t*) loaded_image->ImageBase + sections[UNIFIED_SECTION_UCODE].memory_offset,
-                                sections[UNIFIED_SECTION_UCODE].memory_size);
-}
-
 static void export_pcr_variables(
                 int sections_measured,
                 int parameters_measured,
@@ -1013,11 +680,7 @@ static void load_all_addons(
                 const char *uname,
                 char16_t **cmdline_addons,
                 NamedAddon **dt_addons,
-                size_t *n_dt_addons,
-                NamedAddon **initrd_addons,
-                size_t *n_initrd_addons,
-                NamedAddon **ucode_addons,
-                size_t *n_ucode_addons) {
+                size_t *n_dt_addons) {
 
         EFI_STATUS err;
 
@@ -1025,10 +688,6 @@ static void load_all_addons(
         assert(cmdline_addons);
         assert(dt_addons);
         assert(n_dt_addons);
-        assert(initrd_addons);
-        assert(n_initrd_addons);
-        assert(ucode_addons);
-        assert(n_ucode_addons);
 
         err = load_addons(
                         image,
@@ -1037,11 +696,7 @@ static void load_all_addons(
                         uname,
                         cmdline_addons,
                         dt_addons,
-                        n_dt_addons,
-                        initrd_addons,
-                        n_initrd_addons,
-                        ucode_addons,
-                        n_ucode_addons);
+                        n_dt_addons);
         if (err != EFI_SUCCESS)
                 log_error_status(err, "Error loading global addons, ignoring: %m");
 
@@ -1057,11 +712,7 @@ static void load_all_addons(
                         uname,
                         cmdline_addons,
                         dt_addons,
-                        n_dt_addons,
-                        initrd_addons,
-                        n_initrd_addons,
-                        ucode_addons,
-                        n_ucode_addons);
+                        n_dt_addons);
         if (err != EFI_SUCCESS)
                 log_error_status(err, "Error loading UKI-specific addons, ignoring: %m");
 }
@@ -1186,14 +837,12 @@ static EFI_STATUS run(EFI_HANDLE image) {
         int sections_measured = -1, parameters_measured = -1, sysext_measured = -1, confext_measured = -1;
         _cleanup_(devicetree_cleanup) struct devicetree_state dt_state = {};
         _cleanup_free_ char16_t *cmdline = NULL, *cmdline_addons = NULL;
-        _cleanup_(initrds_free) struct iovec initrds[_INITRD_MAX] = {};
+        struct iovec initrd = {};
         PeSectionVector sections[ELEMENTSOF(unified_sections)] = {};
         EFI_LOADED_IMAGE_PROTOCOL *loaded_image;
         _cleanup_free_ char *uname = NULL;
-        NamedAddon *dt_addons = NULL, *initrd_addons = NULL, *ucode_addons = NULL;
-        size_t n_dt_addons = 0, n_initrd_addons = 0, n_ucode_addons = 0;
-        _cleanup_free_ struct iovec *all_initrds = NULL;
-        size_t n_all_initrds = 0;
+        NamedAddon *dt_addons = NULL;
+        size_t n_dt_addons = 0;
         unsigned profile = 0;
         EFI_STATUS err;
 
@@ -1227,9 +876,7 @@ static EFI_STATUS run(EFI_HANDLE image) {
         /* Now that we have the UKI sections loaded, also load global first and then local (per-UKI)
          * addons. The data is loaded at once, and then used later. */
         CLEANUP_ARRAY(dt_addons, n_dt_addons, named_addon_free_many);
-        CLEANUP_ARRAY(initrd_addons, n_initrd_addons, named_addon_free_many);
-        CLEANUP_ARRAY(ucode_addons, n_ucode_addons, named_addon_free_many);
-        load_all_addons(image, loaded_image, uname, &cmdline_addons, &dt_addons, &n_dt_addons, &initrd_addons, &n_initrd_addons, &ucode_addons, &n_ucode_addons);
+        load_all_addons(image, loaded_image, uname, &cmdline_addons, &dt_addons, &n_dt_addons);
 
         /* If we have any extra command line to add via PE addons, load them now and append, and measure the
          * additions together, after the embedded options, but before the smbios ones, so that the order is
@@ -1245,47 +892,20 @@ static EFI_STATUS run(EFI_HANDLE image) {
         install_embedded_devicetree(loaded_image, sections, &dt_state);
         install_addon_devicetrees(&dt_state, dt_addons, n_dt_addons, &parameters_measured);
 
-        /* Generate & find all initrds */
-        generate_sidecar_initrds(loaded_image, initrds, &parameters_measured, &sysext_measured, &confext_measured);
-        generate_embedded_initrds(loaded_image, sections, initrds);
-        lookup_embedded_initrds(loaded_image, sections, initrds);
-
-        /* Add initrds in the right order. Generally, later initrds can overwrite files in earlier ones,
-         * except for ucode, where the kernel uses the first matching embedded filename.
-         * We want addons to take precedence over the base initrds, so the order is:
-         * 1. Ucode addons
-         * 2. UKI ucode
-         * 3. UKI initrd
-         * 4. Generated initrds
-         * 5. initrd addons */
-        measure_and_append_ucode_addons(&all_initrds, &n_all_initrds, ucode_addons, n_ucode_addons, &parameters_measured);
-        extend_initrds(initrds, &all_initrds, &n_all_initrds);
-        measure_and_append_initrd_addons(&all_initrds, &n_all_initrds, initrd_addons, n_initrd_addons, &parameters_measured);
+        /* Find initrd if there is a .initrd section */
+        if (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_INITRD))
+                initrd = IOVEC_MAKE(
+                                (const uint8_t*) loaded_image->ImageBase + sections[UNIFIED_SECTION_INITRD].memory_offset,
+                                sections[UNIFIED_SECTION_INITRD].memory_size);
 
         /* Export variables indicating what we measured */
         export_pcr_variables(sections_measured, parameters_measured, sysext_measured, confext_measured);
-
-        /* Combine the initrds into one */
-        _cleanup_pages_ Pages initrd_pages = {};
-        struct iovec final_initrd;
-        if (n_all_initrds > 1) {
-                /* There will always be a base initrd, if this counter is higher, we need to combine them */
-                err = combine_initrds(all_initrds, n_all_initrds, &initrd_pages, &final_initrd.iov_len);
-                if (err != EFI_SUCCESS)
-                        return err;
-
-                final_initrd.iov_base = PHYSICAL_ADDRESS_TO_POINTER(initrd_pages.addr);
-
-                /* Given these might be large let's free them explicitly before we pass control to Linux */
-                initrds_free(&initrds);
-        } else
-                final_initrd = all_initrds[0];
 
         struct iovec kernel = IOVEC_MAKE(
                         (const uint8_t*) loaded_image->ImageBase + sections[UNIFIED_SECTION_LINUX].memory_offset,
                         sections[UNIFIED_SECTION_LINUX].memory_size);
 
-        err = linux_exec(image, cmdline, &kernel, &final_initrd);
+        err = linux_exec(image, cmdline, &kernel, &initrd);
         graphics_mode(false);
         return err;
 }
