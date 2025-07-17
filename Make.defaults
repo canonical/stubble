@@ -4,7 +4,6 @@ CFLAGS += -fno-strict-aliasing
 CFLAGS += -ffreestanding
 CFLAGS += -fshort-wchar
 CFLAGS += -fwide-exec-charset=UCS2
-CFLAGS += -maccumulate-outgoing-args
 CFLAGS += -mstack-protector-guard=global
 CFLAGS += -DCOLOR_NORMAL=0x0f
 CFLAGS += -fno-lto
