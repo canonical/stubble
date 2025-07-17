@@ -13,8 +13,8 @@ ifeq ($(ARCH),aarch64)
 endif
 
 OBJS = devicetree.o device-path-util.o efi-efivars.o efi-log.o efi-string.o export-vars.o linux.o \
-    part-discovery.o pe.o shim.o splash.o string-util-fundamental.o stub.o  url-discovery.o util.o uki.o \
-    random-seed.o smbios.o secure-boot.o initrd.o graphics.o efi-firmware.o chid.o \
+    part-discovery.o pe.o shim.o string-util-fundamental.o stub.o  url-discovery.o util.o uki.o \
+    random-seed.o smbios.o secure-boot.o initrd.o efi-firmware.o chid.o \
     sha256.o console.o edid.o sha1.o \
     drivers.o
 

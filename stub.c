@@ -6,7 +6,6 @@
 #include "efi-efivars.h"
 #include "efi-log.h"
 #include "export-vars.h"
-#include "graphics.h"
 #include "iovec-util-fundamental.h"
 #include "linux.h"
 #include "measure.h"
@@ -19,7 +18,6 @@
 #include "secure-boot.h"
 #include "shim.h"
 #include "smbios.h"
-#include "splash.h"
 #include "tpm2-pcr.h"
 #include "uki.h"
 #include "url-discovery.h"
@@ -717,19 +715,6 @@ static void load_all_addons(
                 log_error_status(err, "Error loading UKI-specific addons, ignoring: %m");
 }
 
-static void display_splash(
-                EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                const PeSectionVector sections[static _UNIFIED_SECTION_MAX]) {
-
-        assert(loaded_image);
-        assert(sections);
-
-        if (!PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_SPLASH))
-                return;
-
-        graphics_splash((const uint8_t*) loaded_image->ImageBase + sections[UNIFIED_SECTION_SPLASH].memory_offset, sections[UNIFIED_SECTION_SPLASH].memory_size);
-}
-
 static EFI_STATUS find_sections(
                 EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
                 unsigned profile,
@@ -863,9 +848,6 @@ static EFI_STATUS run(EFI_HANDLE image) {
         measure_profile(profile, &parameters_measured);
         measure_sections(loaded_image, sections, &sections_measured);
 
-        /* Show splash screen as early as possible, but after measuring it */
-        display_splash(loaded_image, sections);
-
         refresh_random_seed(loaded_image);
 
         uname = pe_section_to_str8(loaded_image, sections + UNIFIED_SECTION_UNAME);
@@ -906,7 +888,6 @@ static EFI_STATUS run(EFI_HANDLE image) {
                         sections[UNIFIED_SECTION_LINUX].memory_size);
 
         err = linux_exec(image, cmdline, &kernel, &initrd);
-        graphics_mode(false);
         return err;
 }
 
