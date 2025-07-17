@@ -78,9 +78,6 @@ static void combine_measured_flag(int *value, int measured) {
 static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsigned profile) {
         static const uint64_t stub_features =
                 EFI_STUB_FEATURE_REPORT_BOOT_PARTITION |    /* We set LoaderDevicePartUUID */
-                EFI_STUB_FEATURE_PICK_UP_CREDENTIALS |      /* We pick up credentials from the boot partition */
-                EFI_STUB_FEATURE_PICK_UP_SYSEXTS |          /* We pick up system extensions from the boot partition */
-                EFI_STUB_FEATURE_PICK_UP_CONFEXTS |         /* We pick up configuration extensions from the boot partition */
                 EFI_STUB_FEATURE_THREE_PCRS |               /* We can measure kernel image, parameters and sysext */
                 EFI_STUB_FEATURE_RANDOM_SEED |              /* We pass a random seed to the kernel */
                 EFI_STUB_FEATURE_CMDLINE_ADDONS |           /* We pick up .cmdline addons */
