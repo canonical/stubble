@@ -25,7 +25,7 @@
 
 #include "assert-fundamental.h"
 #include "memory-util-fundamental.h"
-#include "sha256-fundamental.h"
+#include "sha256.h"
 #include "unaligned-fundamental.h"
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
