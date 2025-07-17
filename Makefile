@@ -1,46 +1,16 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-# # DEBUG
-# CFLAGS += -O0 -g
+include ./Make.defaults
 
-# # Unused
-# CFLAGS += -ffunction-sections
-# LDFLAGS += -Wl,--gc-sections
-# LDFLAGS += -Wl,--print-gc-sections
+ARCH=	?= $(shell uname -m)
 
-CFLAGS += -I include
-CFLAGS += -DRELATIVE_SOURCE_PATH="\".\""
-CFLAGS += -fno-strict-aliasing
-CFLAGS += -ffreestanding
-CFLAGS += -fshort-wchar
-CFLAGS += -fwide-exec-charset=UCS2
-CFLAGS += -maccumulate-outgoing-args
-CFLAGS += -mstack-protector-guard=global
-CFLAGS += -DCOLOR_NORMAL=0x0f
-CFLAGS += -fno-lto
-CFLAGS += '-DEFI_MACHINE_TYPE_NAME="x64"'
-CFLAGS += '-DGIT_VERSION="1.0-ubuntu0"'
-
-LDFLAGS += -nostdlib
-LDFLAGS += -static-pie
-LDFLAGS += -Wl,--entry=efi_main
-LDFLAGS += -Wl,--fatal-warnings
-LDFLAGS += -Wl,-static,-pie,--no-dynamic-linker,-z,text
-LDFLAGS += -z common-page-size=4096
-LDFLAGS += -z max-page-size=4096
-LDFLAGS += -z noexecstack
-LDFLAGS += -z relro
-LDFLAGS += -z separate-code
-LDFLAGS += $(shell $(CC) -print-libgcc-file-name)
-LDFLAGS += -Wl,-z,nopack-relative-relocs
-LDFLAGS += -fcf-protection=none
-LDFLAGS += -fno-asynchronous-unwind-tables
-LDFLAGS += -fno-exceptions -fno-unwind-tables
-LDFLAGS += -fno-lto
-
-# arch specific stuff
-CFLAGS += -m64 -march=x86-64 -mno-red-zone -mgeneral-regs-only
-LDFLAGS += -m64
+ifeq ($(ARCH),x86_64)
+	CFLAGS += -m64 -march=x86-64 -mno-red-zone -mgeneral-regs-only -maccumulate-outgoing-args
+	LDFLAGS += -m64
+endif
+ifeq ($(ARCH),aarch64)
+	CFLAGS += -mgeneral-regs-only
+endif
 
 OBJS = cpio.o devicetree.o device-path-util.o efi-efivars.o efi-log.o efi-string.o export-vars.o linux.o \
     part-discovery.o pe.o shim.o splash.o string-util-fundamental.o stub.o  url-discovery.o util.o uki.o \
