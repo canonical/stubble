@@ -38,3 +38,15 @@ For a simple kernel-only UKI run:
 ```
 $ ukify build --linux=$PATH_TO_VMLINUZ --stub=./stub.efi --uname=$KERNEL_VERSION --output=uki.efi
 ```
+
+# Acknowledgements
+
+This project is originally based on
+[systemd-stub](https://manpages.ubuntu.com/manpages/plucky/man7/systemd-stub.7.html)
+from the systemd project.
+The `.dtbauto` feature in systemd was contributed by
+[anonymix007](https://github.com/anonymix007/).
+It is inspired by the [dtbloader](https://github.com/TravMurav/dtbloader)
+project by Nikita Travkin and
+[DtbLoader.efi](https://github.com/aarch64-laptops/edk2/tree/dtbloader-app)
+from the aarch64-laptops project.
