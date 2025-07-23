@@ -526,13 +526,6 @@ static void cmdline_append_and_measure_smbios(char16_t **cmdline, int *parameter
         assert(cmdline);
         assert(parameters_measured);
 
-#if 0
-        /* SMBIOS OEM Strings data is controlled by the host admin and not covered by the VM attestation, so
-         * MUST NOT be trusted when in a confidential VM */
-        if (is_confidential_vm())
-                return;
-#endif
-
         const char *extra = smbios_find_oem_string("io.systemd.stub.kernel-cmdline-extra=", /* after= */ NULL);
         if (!extra)
                 return;
@@ -675,46 +668,6 @@ static EFI_STATUS find_sections(
         return EFI_SUCCESS;
 }
 
-static void settle_command_line(
-                EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                const PeSectionVector sections[static _UNIFIED_SECTION_MAX],
-                char16_t **cmdline,
-                int *parameters_measured) {
-
-        assert(loaded_image);
-        assert(sections);
-        assert(cmdline);
-
-        /* This determines which command line to use. On input *cmdline contains the custom passed in cmdline
-         * if there is any.
-         *
-         * We'll suppress the custom cmdline if we are in Secure Boot mode, and if either there is already
-         * a cmdline baked into the UKI or we are in confidential VM mode. */
-
-        if (!isempty(*cmdline)) {
-                if (secure_boot_enabled() && (PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_CMDLINE)
-#if 0
-		    || is_confidential_vm()
-#endif
-		    ))
-                        /* Drop the custom cmdline */
-                        *cmdline = mfree(*cmdline);
-                else {
-                        /* Let's measure the passed kernel command line into the TPM. Note that this possibly
-                         * duplicates what we already did in the boot menu, if that was already
-                         * used. However, since we want the boot menu to support an EFI binary, and want to
-                         * this stub to be usable from any boot menu, let's measure things anyway. */
-                        bool m = false;
-                        (void) tpm_log_load_options(*cmdline, &m);
-                        combine_measured_flag(parameters_measured, m);
-                }
-        }
-
-        /* No cmdline specified? Or suppressed? Then let's take the one from the UKI, if there is any. */
-        if (isempty(*cmdline))
-                *cmdline = mangle_stub_cmdline(pe_section_to_str16(loaded_image, sections + UNIFIED_SECTION_CMDLINE));
-}
-
 static EFI_STATUS run(EFI_HANDLE image) {
         int sections_measured = -1, parameters_measured = -1, sysext_measured = -1, confext_measured = -1;
         _cleanup_(devicetree_cleanup) struct devicetree_state dt_state = {};
@@ -745,9 +698,6 @@ static EFI_STATUS run(EFI_HANDLE image) {
         refresh_random_seed(loaded_image);
 
         uname = pe_section_to_str8(loaded_image, sections + UNIFIED_SECTION_UNAME);
-
-        /* Let's now check if we actually want to use the command line, measure it if it was passed in. */
-        settle_command_line(loaded_image, sections, &cmdline, &parameters_measured);
 
         /* Now that we have the UKI sections loaded, also load global first and then local (per-UKI)
          * addons. The data is loaded at once, and then used later. */
