@@ -18,15 +18,15 @@ OBJS = devicetree.o device-path-util.o efi-efivars.o efi-log.o efi-string.o expo
     sha256.o console.o edid.o sha1.o \
     drivers.o
 
-all: stub.efi
+all: ubustub.efi
 
 %.o: %.c
 	$(CC) $< $(CFLAGS) -c -o $@
 
-stub.efi: stub
-	./elf2efi.py --version-major=6 --version-minor=16 --efi-major=1 --efi-minor=1 --subsystem=10 --copy-sections=".sbat,.sdmagic,.osrel" stub $@
+ubustub.efi: ubustub
+	./elf2efi.py --version-major=6 --version-minor=16 --efi-major=1 --efi-minor=1 --subsystem=10 --copy-sections=".sbat,.sdmagic,.osrel" $< $@
 
-stub: $(OBJS)
+ubustub: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
