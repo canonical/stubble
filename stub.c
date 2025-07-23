@@ -112,6 +112,25 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image) {
         }
 }
 
+static void parse_cmdline(char16_t *p) {
+
+        assert(p);
+
+        while (*p != '\0') {
+                const char16_t *debug = L"debug";
+                size_t debug_len = strlen16(debug);
+                if (strncmp16(p, debug, debug_len) == 0 &&
+                                (p[debug_len] == ' ' ||
+                                 p[debug_len] == '\0'))
+                        log_isdebug = true;
+
+                p = strchr16(p, ' ');
+                if (p == NULL)
+                        return;
+                p++;
+        }
+}
+
 static void process_arguments(
                 EFI_HANDLE stub_image,
                 EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
@@ -687,6 +706,7 @@ static EFI_STATUS run(EFI_HANDLE image) {
         /* Pick up the arguments passed to us, and return the rest
          * as potential command line to use. */
         (void) process_arguments(image, loaded_image, &cmdline);
+        parse_cmdline(cmdline);
 
         /* Find the sections we want to operate on */
         err = find_sections(loaded_image, sections);

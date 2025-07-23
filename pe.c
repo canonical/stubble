@@ -204,8 +204,11 @@ static bool pe_use_this_dtb(
         EFI_STATUS err;
 
         err = devicetree_match(dtb, dtb_size);
-        if (err == EFI_SUCCESS)
+        if (err == EFI_SUCCESS) {
+                log_debug("found device-tree based on compatible: %s",
+                                devicetree_get_compatible(dtb));
                 return true;
+        }
         if (err != EFI_UNSUPPORTED)
                 return false;
 
@@ -218,8 +221,11 @@ static bool pe_use_this_dtb(
                 return false;
 
         err = devicetree_match_by_compatible(dtb, dtb_size, compatible);
-        if (err == EFI_SUCCESS)
+        if (err == EFI_SUCCESS) {
+                log_debug("found device-tree based on HWID: %s",
+                                devicetree_get_compatible(dtb));
                 return true;
+        }
         if (err == EFI_INVALID_PARAMETER)
                 log_error_status(err, "Found bad DT blob in PE section %zu", section_nb);
         return false;

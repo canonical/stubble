@@ -5,6 +5,7 @@
 #include "util.h"
 
 static unsigned log_count = 0;
+bool log_isdebug = false;
 
 void freeze(void) {
         for (;;)

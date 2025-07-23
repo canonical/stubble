@@ -21,12 +21,14 @@ __attribute__((no_stack_protector, noinline)) void __stack_chk_guard_init(void);
 #  define __stack_chk_guard_init()
 #endif
 
+extern bool log_isdebug;
+
 _noreturn_ void freeze(void);
 void log_wait(void);
 _gnu_printf_(3, 4) EFI_STATUS log_internal(EFI_STATUS status, uint8_t text_color, const char *format, ...);
 #define log_full(status, text_color, format, ...)                       \
         log_internal(status, text_color, "%s:%i@%s: " format, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
-#define log_debug(...) log_full(EFI_SUCCESS, EFI_LIGHTGRAY, __VA_ARGS__)
+#define log_debug(...) ({ log_isdebug && log_full(EFI_SUCCESS, EFI_LIGHTGRAY, __VA_ARGS__); })
 #define log_info(...) log_full(EFI_SUCCESS, EFI_WHITE, __VA_ARGS__)
 #define log_warning_status(status, ...) log_full(status, EFI_YELLOW, __VA_ARGS__)
 #define log_error_status(status, ...) log_full(status, EFI_LIGHTRED, __VA_ARGS__)

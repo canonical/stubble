@@ -106,7 +106,7 @@ EFI_STATUS devicetree_install(struct devicetree_state *state, EFI_FILE *root_dir
                         MAKE_GUID_PTR(EFI_DTB_TABLE), PHYSICAL_ADDRESS_TO_POINTER(state->addr));
 }
 
-static const char* devicetree_get_compatible(const void *dtb) {
+const char* devicetree_get_compatible(const void *dtb) {
         if ((uintptr_t) dtb % alignof(FdtHeader) != 0)
                 return NULL;
 
