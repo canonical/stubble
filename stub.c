@@ -75,7 +75,7 @@ static void combine_measured_flag(int *value, int measured) {
         *value = *value < 0 ? measured : *value && measured;
 }
 
-static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsigned profile) {
+static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image) {
         static const uint64_t stub_features =
                 EFI_STUB_FEATURE_REPORT_BOOT_PARTITION |    /* We set LoaderDevicePartUUID */
                 EFI_STUB_FEATURE_THREE_PCRS |               /* We can measure kernel image, parameters and sysext */
@@ -83,7 +83,6 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsig
                 EFI_STUB_FEATURE_CMDLINE_ADDONS |           /* We pick up .cmdline addons */
                 EFI_STUB_FEATURE_CMDLINE_SMBIOS |           /* We support extending kernel cmdline from SMBIOS Type #11 */
                 EFI_STUB_FEATURE_DEVICETREE_ADDONS |        /* We pick up .dtb addons */
-                EFI_STUB_FEATURE_MULTI_PROFILE_UKI |        /* We grok the "@1" profile command line argument */
                 EFI_STUB_FEATURE_REPORT_STUB_PARTITION |    /* We set StubDevicePartUUID + StubImageIdentifier */
                 EFI_STUB_FEATURE_REPORT_URL |               /* We set StubDeviceURL + LoaderDeviceURL */
                 0;
@@ -95,8 +94,6 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsig
         (void) efivar_set_str16(MAKE_GUID_PTR(LOADER), u"StubInfo", u"ubustub " GIT_VERSION, 0);
 
         (void) efivar_set_uint64_le(MAKE_GUID_PTR(LOADER), u"StubFeatures", stub_features, 0);
-
-        (void) efivar_set_uint64_str16(MAKE_GUID_PTR(LOADER), u"StubProfile", profile, 0);
 
         if (loaded_image->DeviceHandle) {
                 _cleanup_free_ char16_t *uuid = disk_get_part_uuid(loaded_image->DeviceHandle);
@@ -115,71 +112,13 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image, unsig
         }
 }
 
-static bool parse_profile_from_cmdline(char16_t **cmdline, unsigned *ret_profile) {
-        assert(cmdline);
-        assert(*cmdline);
-        assert(ret_profile);
-
-        const char16_t *p = *cmdline;
-        if (p[0] != '@')
-                goto nothing;
-
-        uint64_t u;
-        const char16_t *tail;
-        if (!parse_number16(p + 1, &u, &tail))
-                goto nothing;
-        if (u > UINT_MAX)
-                goto nothing;
-        /* Remove exactly one separating space. No further mangling, in order to not disturb measurements –
-         * and thus making prediction harder –, after all we want that people can safely prefix their command
-         * lines with a profile without having to be bothered with additional whitespace the command line
-         * might already contain. */
-        if (tail[0] == u' ')
-                tail++;
-        else if (tail[0] != 0) /* If this is neither a space nor the end of the string, it must be something else */
-                goto nothing;
-
-        /* Drop prefix */
-        free_and_xstrdup16(cmdline, tail);
-        *ret_profile = u;
-        return true;
-
-nothing:
-        *ret_profile = 0;
-        return false;
-}
-
-static bool parse_profile_from_argument(const char16_t *arg, unsigned *ret_profile) {
-        assert(arg);
-        assert(ret_profile);
-
-        if (arg[0] != '@')
-                goto nothing;
-
-        uint64_t u;
-        if (!parse_number16(arg + 1, &u, /* ret_tail= */ NULL))
-                goto nothing;
-
-        if (u > UINT_MAX)
-                goto nothing;
-
-        *ret_profile = u;
-        return true;
-
-nothing:
-        *ret_profile = 0;
-        return false;
-}
-
 static void process_arguments(
                 EFI_HANDLE stub_image,
                 EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                unsigned *ret_profile,
                 char16_t **ret_cmdline) {
 
         assert(stub_image);
         assert(loaded_image);
-        assert(ret_profile);
         assert(ret_cmdline);
 
         /* The UEFI shell registers EFI_SHELL_PARAMETERS_PROTOCOL onto images it runs. This lets us know that
@@ -195,7 +134,6 @@ static void process_arguments(
                 /* Not running from EFI shell, use entire LoadOptions. Note that LoadOptions is a void*, so
                  * it could actually be anything! */
                 char16_t *c = xstrndup16(loaded_image->LoadOptions, loaded_image->LoadOptionsSize / sizeof(char16_t));
-                parse_profile_from_cmdline(&c, ret_profile);
                 *ret_cmdline = mangle_stub_cmdline(c);
                 return;
         }
@@ -204,9 +142,6 @@ static void process_arguments(
                 goto nothing;
 
         size_t i = 1;
-
-        /* The first argument is possibly an "@5" style profile specifier */
-        i += parse_profile_from_argument(shell->Argv[i], ret_profile);
 
         if (i < shell->Argc) {
                 /* Assemble the command line ourselves without our stub path. */
@@ -221,7 +156,6 @@ static void process_arguments(
         return;
 
 nothing:
-        *ret_profile = 0;
         *ret_cmdline = NULL;
         return;
 }
@@ -714,7 +648,6 @@ static void load_all_addons(
 
 static EFI_STATUS find_sections(
                 EFI_LOADED_IMAGE_PROTOCOL *loaded_image,
-                unsigned profile,
                 PeSectionVector sections[static _UNIFIED_SECTION_MAX]) {
 
         EFI_STATUS err;
@@ -729,28 +662,12 @@ static EFI_STATUS find_sections(
                 return log_error_status(err, "Unable to locate PE section table: %m");
 
         /* Get the base sections */
-        err = pe_locate_profile_sections(
-                        section_table,
-                        n_section_table,
-                        unified_sections,
-                        /* profile= */ UINT_MAX,
-                        /* validate_base= */ PTR_TO_SIZE(loaded_image->ImageBase),
-                        sections);
-        if (err != EFI_SUCCESS)
-                return log_error_status(err, "Unable to locate embedded base PE sections: %m");
-
-        if (profile != UINT_MAX) {
-                /* And then override them with the per-profile sections of the selected profile */
-                err = pe_locate_profile_sections(
-                                section_table,
-                                n_section_table,
-                                unified_sections,
-                                profile,
-                                /* validate_base= */ PTR_TO_SIZE(loaded_image->ImageBase),
-                                sections);
-                if (err != EFI_SUCCESS && !(err == EFI_NOT_FOUND && profile == 0)) /* the first profile is implied if it doesn't exist */
-                        return log_error_status(err, "Unable to locate embedded per-profile PE sections: %m");
-        }
+        pe_locate_sections(
+                    section_table,
+                    n_section_table,
+                    unified_sections,
+                    /* validate_base= */ PTR_TO_SIZE(loaded_image->ImageBase),
+                    sections);
 
         if (!PE_SECTION_VECTOR_IS_SET(sections + UNIFIED_SECTION_LINUX))
                 return log_error_status(EFI_NOT_FOUND, "Image lacks .linux section.");
@@ -798,23 +715,6 @@ static void settle_command_line(
                 *cmdline = mangle_stub_cmdline(pe_section_to_str16(loaded_image, sections + UNIFIED_SECTION_CMDLINE));
 }
 
-static void measure_profile(unsigned profile, int *parameters_measured) {
-        if (profile == 0) /* don't measure anything about the default profile */
-                return;
-
-        _cleanup_free_ char16_t *s = xasprintf("%u", profile);
-
-        bool m = false;
-        (void) tpm_log_tagged_event(
-                        TPM2_PCR_KERNEL_CONFIG,
-                        POINTER_TO_PHYSICAL_ADDRESS(s),
-                        strsize16(s),
-                        UKI_PROFILE_EVENT_TAG_ID,
-                        s,
-                        &m);
-        combine_measured_flag(parameters_measured, m);
-}
-
 static EFI_STATUS run(EFI_HANDLE image) {
         int sections_measured = -1, parameters_measured = -1, sysext_measured = -1, confext_measured = -1;
         _cleanup_(devicetree_cleanup) struct devicetree_state dt_state = {};
@@ -825,24 +725,21 @@ static EFI_STATUS run(EFI_HANDLE image) {
         _cleanup_free_ char *uname = NULL;
         NamedAddon *dt_addons = NULL;
         size_t n_dt_addons = 0;
-        unsigned profile = 0;
         EFI_STATUS err;
 
         err = BS->HandleProtocol(image, MAKE_GUID_PTR(EFI_LOADED_IMAGE_PROTOCOL), (void **) &loaded_image);
         if (err != EFI_SUCCESS)
                 return log_error_status(err, "Error getting a LoadedImageProtocol handle: %m");
 
-        /* Pick up the arguments passed to us, split out the prefixing profile parameter, and return the rest
+        /* Pick up the arguments passed to us, and return the rest
          * as potential command line to use. */
-        (void) process_arguments(image, loaded_image, &profile, &cmdline);
+        (void) process_arguments(image, loaded_image, &cmdline);
 
-        /* Find the sections we want to operate on, both the basic ones, and the one appropriate for the
-         * selected profile. */
-        err = find_sections(loaded_image, profile, sections);
+        /* Find the sections we want to operate on */
+        err = find_sections(loaded_image, sections);
         if (err != EFI_SUCCESS)
                 return err;
 
-        measure_profile(profile, &parameters_measured);
         measure_sections(loaded_image, sections, &sections_measured);
 
         refresh_random_seed(loaded_image);
@@ -865,7 +762,7 @@ static EFI_STATUS run(EFI_HANDLE image) {
         cmdline_append_and_measure_smbios(&cmdline, &parameters_measured);
 
         export_common_variables(loaded_image);
-        export_stub_variables(loaded_image, profile);
+        export_stub_variables(loaded_image);
 
         /* First load the base device tree, then fix it up using addons - global first, then per-UKI. */
         install_embedded_devicetree(loaded_image, sections, &dt_state);

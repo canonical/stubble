@@ -40,11 +40,10 @@ EFI_STATUS pe_section_table_from_file(
                 PeSectionHeader **ret_section_table,
                 size_t *ret_n_section_table);
 
-EFI_STATUS pe_locate_profile_sections(
+void pe_locate_sections(
                 const PeSectionHeader section_table[],
                 size_t n_section_table,
                 const char* const section_names[],
-                unsigned profile,
                 size_t validate_base,
                 PeSectionVector sections[]);
 

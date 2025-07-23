@@ -353,7 +353,7 @@ static bool looking_for_dtbauto(const char *const section_names[]) {
          return false;
 }
 
-static void pe_locate_sections(
+void pe_locate_sections(
                 const PeSectionHeader section_table[],
                 size_t n_section_table,
                 const char *const section_names[],
@@ -662,95 +662,5 @@ EFI_STATUS pe_section_table_from_file(
 
         *ret_section_table = TAKE_PTR(section_table);
         *ret_n_section_table = n_section_table;
-        return EFI_SUCCESS;
-}
-
-static const PeSectionHeader* pe_section_table_find_profile_start(
-                const PeSectionHeader *section_table,
-                size_t n_section_table,
-                unsigned profile) {
-
-        assert(section_table || n_section_table == 0);
-
-        if (profile == UINT_MAX) /* base profile? that starts at the beginning */
-                return section_table;
-
-        unsigned current_profile = UINT_MAX;
-        FOREACH_ARRAY(p, section_table, n_section_table) {
-
-                if (!pe_section_name_equal((const char*) p->Name, ".profile"))
-                        continue;
-
-                if (current_profile == UINT_MAX)
-                        current_profile = 0;
-                else
-                        current_profile++;
-
-                if (current_profile == profile) /* Found our profile! */
-                        return p;
-        }
-
-        /* We reached the end of the table? Then this section does not exist */
-        return NULL;
-}
-
-static size_t pe_section_table_find_profile_length(
-                const PeSectionHeader *section_table,
-                size_t n_section_table,
-                const PeSectionHeader *start,
-                unsigned profile) {
-
-        assert(section_table);
-        assert(n_section_table > 0);
-        assert(start >= section_table);
-        assert(start < section_table + n_section_table);
-
-        /* Look for the next .profile (or the end of the table), this is where the sections for this
-         * profile end. The base profile does not start with a .profile, the others do, hence conditionally
-         * skip over the first entry. */
-        const PeSectionHeader *e;
-        if (profile == UINT_MAX) /* Base profile */
-                e = start;
-        else {
-                assert(pe_section_name_equal((const char *) start->Name, ".profile"));
-                e = start + 1;
-        }
-
-        for (; e < section_table + n_section_table; e++)
-                if (pe_section_name_equal((const char*) e->Name, ".profile"))
-                        return e - start;
-
-        return (section_table + n_section_table) - start;
-}
-
-EFI_STATUS pe_locate_profile_sections(
-                const PeSectionHeader section_table[],
-                size_t n_section_table,
-                const char* const section_names[],
-                unsigned profile,
-                size_t validate_base,
-                PeSectionVector sections[]) {
-
-        assert(section_table || n_section_table == 0);
-        assert(section_names);
-        assert(sections);
-
-        /* Now scan through the section table until we skipped over the right number of .profile sections */
-        const PeSectionHeader *p = pe_section_table_find_profile_start(section_table, n_section_table, profile);
-        if (!p)
-                return EFI_NOT_FOUND;
-
-        /* Look for the next .profile (or the end of the table), this is where the sections for this
-         * profile end. */
-        size_t n = pe_section_table_find_profile_length(section_table, n_section_table, p, profile);
-
-        /* And now parse everything between the start and end of our profile */
-        pe_locate_sections(
-                        p,
-                        n,
-                        section_names,
-                        validate_base,
-                        sections);
-
         return EFI_SUCCESS;
 }
