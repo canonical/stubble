@@ -34,5 +34,5 @@ ubustub: $(OBJS)
 
 clean:
 	rm -f $(OBJS)
-	rm -f stub
-	rm -f stub.efi
+	rm -f ubustub
+	rm -f ubustub.efi
