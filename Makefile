@@ -24,7 +24,10 @@ all: ubustub.efi
 	$(CC) $< $(CFLAGS) -c -o $@
 
 ubustub.efi: ubustub
-	./elf2efi.py --version-major=6 --version-minor=16 --efi-major=1 --efi-minor=1 --subsystem=10 --copy-sections=".sbat,.sdmagic,.osrel" $< $@
+	./elf2efi.py --version-major=6 --version-minor=16 \
+	    --efi-major=1 --efi-minor=1 --subsystem=10 \
+	    --minimum-sections=50 \
+	    --copy-sections=".sbat,.sdmagic,.osrel" $< $@
 
 ubustub: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
