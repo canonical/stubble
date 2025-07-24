@@ -3,7 +3,7 @@
 A minimal alternative to [systemd-stub(7)](https://manpages.ubuntu.com/manpages/plucky/man7/systemd-stub.7.html)
 that serves a single purpose:
 
-**Autmoatically loading machine specific device trees embedded within the
+**Automatically loading machine specific device trees embedded within the
 kernel image.**
 
 ubustub is compatible with [systemd-stub(7)](https://manpages.ubuntu.com/manpages/plucky/man7/systemd-stub.7.html)
