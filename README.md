@@ -7,7 +7,7 @@ that serves a single purpose:
 kernel image.**
 
 ubustub is compatible with [systemd-stub(7)](https://manpages.ubuntu.com/manpages/plucky/man7/systemd-stub.7.html)
-and [ukfiy(1)](https://manpages.ubuntu.com/manpages/plucky/man1/ukify.1.html).
+and [ukify(1)](https://manpages.ubuntu.com/manpages/plucky/man1/ukify.1.html).
 It is designed to seamlessly integrate with Ubuntu's current bootloader and
 boot security model. The resulting kernel image can be signed and verified
 and loaded by grub like any other kernel.
