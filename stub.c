@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 
-#include "cpio.h"
 #include "device-path-util.h"
 #include "devicetree.h"
 #include "efi-efivars.h"
@@ -23,7 +22,6 @@
 #include "url-discovery.h"
 #include "util.h"
 #include "version.h"
-#include "vmm.h"
 
 /* magic string to find in the binary image */
 DECLARE_NOALLOC_SECTION(".sdmagic", "#### LoaderInfo: ubustub " GIT_VERSION " ####");
@@ -80,7 +78,6 @@ static void export_stub_variables(EFI_LOADED_IMAGE_PROTOCOL *loaded_image) {
                 EFI_STUB_FEATURE_REPORT_BOOT_PARTITION |    /* We set LoaderDevicePartUUID */
                 EFI_STUB_FEATURE_THREE_PCRS |               /* We can measure kernel image, parameters and sysext */
                 EFI_STUB_FEATURE_RANDOM_SEED |              /* We pass a random seed to the kernel */
-                EFI_STUB_FEATURE_CMDLINE_SMBIOS |           /* We support extending kernel cmdline from SMBIOS Type #11 */
                 EFI_STUB_FEATURE_REPORT_STUB_PARTITION |    /* We set StubDevicePartUUID + StubImageIdentifier */
                 EFI_STUB_FEATURE_REPORT_URL |               /* We set StubDeviceURL + LoaderDeviceURL */
                 0;
@@ -253,32 +250,6 @@ static void measure_sections(
         }
 }
 
-static void cmdline_append_and_measure_smbios(char16_t **cmdline, int *parameters_measured) {
-        assert(cmdline);
-        assert(parameters_measured);
-
-        const char *extra = smbios_find_oem_string("io.systemd.stub.kernel-cmdline-extra=", /* after= */ NULL);
-        if (!extra)
-                return;
-
-        _cleanup_free_ char16_t *extra16 = mangle_stub_cmdline(xstr8_to_16(extra));
-        if (isempty(extra16))
-                return;
-
-        /* SMBIOS strings are measured in PCR1, but we also want to measure them in our specific PCR12, as
-         * firmware-owned PCRs are very difficult to use as they'll contain unpredictable measurements that
-         * are not under control of the machine owner. */
-        bool m = false;
-        (void) tpm_log_load_options(extra16, &m);
-        combine_measured_flag(parameters_measured, m);
-
-        _cleanup_free_ char16_t *tmp = TAKE_PTR(*cmdline);
-        if (isempty(tmp))
-                *cmdline = TAKE_PTR(extra16);
-        else
-                *cmdline = xasprintf("%ls %ls", tmp, extra16);
-}
-
 static void export_pcr_variables(
                 int sections_measured,
                 int parameters_measured,
@@ -385,12 +356,6 @@ static EFI_STATUS run(EFI_HANDLE image) {
         refresh_random_seed(loaded_image);
 
         uname = pe_section_to_str8(loaded_image, sections + UNIFIED_SECTION_UNAME);
-
-        /* If we have any extra command line to add via PE addons, load them now and append, and measure the
-         * additions together, after the embedded options, but before the smbios ones, so that the order is
-         * reversed from "most hardcoded" to "most dynamic". The global addons are loaded first, and the
-         * image-specific ones later, for the same reason. */
-        cmdline_append_and_measure_smbios(&cmdline, &parameters_measured);
 
         export_common_variables(loaded_image);
         export_stub_variables(loaded_image);

@@ -7,7 +7,6 @@
 #include "proto/security-arch.h"
 #include "secure-boot.h"
 #include "util.h"
-#include "vmm.h"
 
 bool secure_boot_enabled(void) {
         bool secure = false;  /* avoid false maybe-uninitialized warning */
