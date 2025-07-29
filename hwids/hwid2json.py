@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # SPDX-License-Identifier: 0BSD
 
 from uuid import UUID
@@ -54,7 +54,7 @@ def parse_hwid_dir(inpath: Path, outpath: Path) -> None:
         parse_hwid_file(hwid_file, inpath, outpath)
 
 
-inpath = Path('./hwids')
+inpath = Path('./txt')
 outpath = Path('./json')
 
 if len(sys.argv) > 1:
