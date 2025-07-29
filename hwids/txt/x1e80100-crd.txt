@@ -1,0 +1,34 @@
+Computer Information
+--------------------
+BiosVendor: Qualcomm Technologies, Inc.
+BiosVersion: 6.0.240718.BOOT.MXF.2.4-00515-HAMOA-1
+BiosMajorRelease: 255
+BiosMinorRelease: 255
+FirmwareMajorRelease: 00
+FirmwareMinorRelease: 14
+Manufacturer: Qualcomm
+Family: SCP_HAMOA
+ProductName: CRD
+ProductSku: 6
+Hardware IDs
+------------
+{e73870a5-90e8-528d-93fd-3da59f78df18}   <- Manufacturer + Family + ProductName + ProductSku + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+{2405af0b-d21d-5196-a228-4acffe7b3a10}   <- Manufacturer + Family + ProductName + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+{8fa88c58-23eb-5aea-9ea7-c4a98ded7352}   <- Manufacturer + ProductName + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+not available as 'BaseboardManufacturer' unknown
+{7faef667-9eb2-53f4-9764-26fe0e92fbff}   <- Manufacturer + Family + ProductName + ProductSku
+{b6d4eee8-30f3-564a-8246-e83935cf8dbb}   <- Manufacturer + Family + ProductName
+not available as 'BaseboardManufacturer' unknown
+{4bb05d50-6c4f-525d-a9ec-8924afd6edea}   <- Manufacturer + ProductSku
+not available as 'BaseboardManufacturer' unknown
+{339fc6d2-e0f4-5226-9dd9-62c4dc41881d}   <- Manufacturer + ProductName
+not available as 'BaseboardManufacturer' unknown
+{b36a40fa-4640-5b1b-8fa1-6dbde103c80d}   <- Manufacturer + Family
+not available as 'EnclosureKind' unknown
+not available as 'BaseboardManufacturer' unknown
+{0d601876-0ac6-533e-8386-3a58203d8c33}   <- Manufacturer
+Extra Hardware IDs
+------------------
+{d52e3fb6-202c-5cfa-a27c-e3ffe15339fb}   <- Manufacturer + Family + ProductName + ProductSku + BiosVendor
+{361b3d63-be90-52c2-8798-a05fbd68b773}   <- Manufacturer + Family + ProductName + BiosVendor
+{d86bea02-5d71-5ee5-98dc-4f74d5777dde}   <- Manufacturer + BiosVendor
