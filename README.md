@@ -33,11 +33,18 @@ Build the stub:
 $ make
 ```
 
-For a simple kernel-only UKI run:
+For a simple combined kernel+ubustub image bundling a single DTB you can run:
 
 ```
-$ ukify build --linux=$PATH_TO_VMLINUZ --stub=./stub.efi --uname=$KERNEL_VERSION --output=uki.efi
+$ ukify build --linux=/boot/vmlinuz --stub=ubustub.efi --hwids=hwids/json --dtbauto=/boot/dtb --output=vmlinuz.efi
 ```
+
+## HWIDs
+
+The `.txt` files in hwids/txt have been generated with `fwupdtool hwids`.
+The can be converted to `.json` files by running `hwid2json.py` from the
+`hwids` directory. The `compatible` field of the resulting JSON files has
+to be filled in manually.
 
 # Acknowledgements
 
