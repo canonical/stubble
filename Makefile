@@ -3,7 +3,6 @@
 include ./Make.defaults
 
 ARCH?=		$(shell uname -m)
-LIBDIR?=	/lib
 PREFIX?=	/usr
 
 ifeq ($(ARCH),x86_64)
@@ -37,8 +36,10 @@ ubustub: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 install: ubustub.efi
-	install -m 755 -d ${DESTDIR}${PREFIX}${LIBDIR}/ubustub
-	install -m 644 -s ubustub.efi -D -t ${DESTDIR}${PREFIX}${LIBDIR}
+	install -m 755 -d ${DESTDIR}${PREFIX}/lib/ubustub
+	install -m 644 -t ${DESTDIR}${PREFIX}/lib/ubustub ubustub.efi
+	install -m 755 -d ${DESTDIR}${PREFIX}/share/ubustub/hwids
+	install -m 644 -t ${DESTDIR}${PREFIX}/share/ubustub/hwids hwids/json/*
 
 clean:
 	rm -f $(OBJS)
