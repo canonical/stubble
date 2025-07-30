@@ -203,16 +203,7 @@ static bool pe_use_this_dtb(
 
         EFI_STATUS err;
 
-        err = devicetree_match(dtb, dtb_size);
-        if (err == EFI_SUCCESS) {
-                log_debug("found device-tree based on compatible: %s",
-                                devicetree_get_compatible(dtb));
-                return true;
-        }
-        if (err != EFI_UNSUPPORTED)
-                return false;
-
-        /* There's nothing to match against if firmware does not provide DTB and there is no .hwids section */
+        /* There's nothing to match against if there is no .hwids section */
         if (!device || !base)
                 return false;
 
