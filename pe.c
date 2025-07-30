@@ -6,6 +6,7 @@
 #include "efi-log.h"
 #include "pe.h"
 #include "util.h"
+#include "proto/dt-fixup.h"
 
 #define DOS_FILE_MAGIC "MZ"
 #define PE_FILE_MAGIC  "PE\0\0"
@@ -202,6 +203,11 @@ static bool pe_use_this_dtb(
         assert(dtb);
 
         EFI_STATUS err;
+
+	/* Do nothing if a firmware dtb exists */
+        const void *fw_dtb = find_configuration_table(MAKE_GUID_PTR(EFI_DTB_TABLE));
+        if (fw_dtb)
+                return false;
 
         /* There's nothing to match against if there is no .hwids section */
         if (!device || !base)
