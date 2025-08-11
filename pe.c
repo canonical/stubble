@@ -372,54 +372,7 @@ void pe_locate_sections(
                             sections);
 }
 
-static uint32_t get_compatibility_entry_address(const DosFileHeader *dos, const PeFileHeader *pe) {
-        /* The kernel may provide alternative PE entry points for different PE architectures. This allows
-         * booting a 64-bit kernel on 32-bit EFI that is otherwise running on a 64-bit CPU. The locations of any
-         * such compat entry points are located in a special PE section. */
-
-        assert(dos);
-        assert(pe);
-
-        static const char *const section_names[] = { ".compat", NULL };
-        PeSectionVector vector[1] = {};
-        pe_locate_sections(
-                        (const PeSectionHeader *) ((const uint8_t *) dos + section_table_offset(dos, pe)),
-                        pe->FileHeader.NumberOfSections,
-                        section_names,
-                        PTR_TO_SIZE(dos),
-                        vector);
-
-        if (!PE_SECTION_VECTOR_IS_SET(vector)) /* not found */
-                return 0;
-
-        typedef struct {
-                uint8_t type;
-                uint8_t size;
-                uint16_t machine_type;
-                uint32_t entry_point;
-        } _packed_ LinuxPeCompat1;
-
-        size_t addr = vector[0].memory_offset, size = vector[0].memory_size;
-
-        while (size >= sizeof(LinuxPeCompat1) && addr % alignof(LinuxPeCompat1) == 0) {
-                const LinuxPeCompat1 *compat = (const LinuxPeCompat1 *) ((const uint8_t *) dos + addr);
-
-                if (compat->type == 0 || compat->size == 0 || compat->size > size)
-                        break;
-
-                if (compat->type == 1 &&
-                    compat->size >= sizeof(LinuxPeCompat1) &&
-                    compat->machine_type == TARGET_MACHINE_TYPE)
-                        return compat->entry_point;
-
-                addr += compat->size;
-                size -= compat->size;
-        }
-
-        return 0;
-}
-
-EFI_STATUS pe_kernel_info(const void *base, uint32_t *ret_entry_point, uint32_t *ret_compat_entry_point, uint64_t *ret_image_base, size_t *ret_size_in_memory) {
+EFI_STATUS pe_kernel_info(const void *base, uint32_t *ret_entry_point, uint64_t *ret_image_base, size_t *ret_size_in_memory) {
         assert(base);
 
         const DosFileHeader *dos = (const DosFileHeader *) base;
@@ -450,32 +403,16 @@ EFI_STATUS pe_kernel_info(const void *base, uint32_t *ret_entry_point, uint32_t 
         if (pe->OptionalHeader.MajorImageVersion < 1)
                 return EFI_UNSUPPORTED;
 
-        if (pe->FileHeader.Machine == TARGET_MACHINE_TYPE) {
-                if (ret_entry_point)
-                        *ret_entry_point = pe->OptionalHeader.AddressOfEntryPoint;
-                if (ret_compat_entry_point)
-                        *ret_compat_entry_point = 0;
-                if (ret_image_base)
-                        *ret_image_base = image_base;
-                if (ret_size_in_memory)
-                        *ret_size_in_memory = size_in_memory;
-                return EFI_SUCCESS;
-        }
-
-        uint32_t compat_entry_point = get_compatibility_entry_address(dos, pe);
-        if (compat_entry_point == 0)
-                /* Image type not supported and no compat entry found. */
+        /* We do not support cross-architecture kernel loading. */
+        if (pe->FileHeader.Machine != TARGET_MACHINE_TYPE)
                 return EFI_UNSUPPORTED;
 
         if (ret_entry_point)
-                *ret_entry_point = 0;
-        if (ret_compat_entry_point)
-                *ret_compat_entry_point = compat_entry_point;
+                *ret_entry_point = pe->OptionalHeader.AddressOfEntryPoint;
         if (ret_image_base)
                 *ret_image_base = image_base;
         if (ret_size_in_memory)
                 *ret_size_in_memory = size_in_memory;
-
         return EFI_SUCCESS;
 }
 
