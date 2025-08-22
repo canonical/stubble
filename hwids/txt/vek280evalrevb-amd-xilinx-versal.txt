@@ -1,0 +1,37 @@
+Computer Information
+--------------------
+BiosVendor: U-Boot
+BiosVersion: 2025.01-gbb3b14027762
+BiosMajorRelease: 25
+BiosMinorRelease: 1
+FirmwareMajorRelease: ff
+FirmwareMinorRelease: ff
+Manufacturer: xlnx
+Family: xlnx,versal-vek280
+ProductName: Xilinx Versal vek280 Eval board revB
+ProductSku:
+EnclosureKind: 3
+BaseboardManufacturer: xlnx
+BaseboardProduct: Xilinx Versal vek280 Eval board revB
+Hardware IDs
+------------
+{ada08389-64fa-59f5-8b80-10ed310eba62}   <- Manufacturer + Family + ProductName + ProductSku + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+{ec44f8dc-62c9-5280-8cf5-3e30009f8970}   <- Manufacturer + Family + ProductName + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+{0e91353a-2107-5e22-a5b3-10863c0e48fc}   <- Manufacturer + ProductName + BiosVendor + BiosVersion + BiosMajorRelease + BiosMinorRelease
+{b45dd812-3668-52b5-a84c-7a7af81d4315}   <- Manufacturer + Family + ProductName + ProductSku + BaseboardManufacturer + BaseboardProduct
+{90b709a5-8bf9-5ded-b7bd-8a2f6db0f1cb}   <- Manufacturer + Family + ProductName + ProductSku
+{27971549-3a00-5908-b4e1-3b34be8640f8}   <- Manufacturer + Family + ProductName
+{3937d6c6-288f-507b-abc9-364eaf0d663c}   <- Manufacturer + ProductSku + BaseboardManufacturer + BaseboardProduct
+{850f5b9b-052c-58f2-8bb4-1161a2dcc9f7}   <- Manufacturer + ProductSku
+{d4183363-23db-578d-b04d-e8e1080de384}   <- Manufacturer + ProductName + BaseboardManufacturer + BaseboardProduct
+{745b41f2-0e8f-56ab-a949-304de98b1231}   <- Manufacturer + ProductName
+{d62c9512-8df4-5529-96db-0bd43cef0864}   <- Manufacturer + Family + BaseboardManufacturer + BaseboardProduct
+{727c7f12-993c-5412-ac00-207dd2de8109}   <- Manufacturer + Family
+{434c6fd5-3905-53e4-bc94-1c509a226b6b}   <- Manufacturer + EnclosureKind
+{641f588f-1c24-54ab-8748-647af5af304b}   <- Manufacturer + BaseboardManufacturer + BaseboardProduct
+{1e2281e9-ca88-512e-bc76-230a1925b3c6}   <- Manufacturer
+Extra Hardware IDs
+------------------
+{4912fa7f-d61e-57bc-bc8c-ae6bc56d0e19}   <- Manufacturer + Family + ProductName + ProductSku + BiosVendor
+{f73b34c4-4990-53ff-bc24-6f8e4858e4cd}   <- Manufacturer + Family + ProductName + BiosVendor
+{720e6d77-0ebc-5268-981b-b7314f15fb36}   <- Manufacturer + BiosVendor

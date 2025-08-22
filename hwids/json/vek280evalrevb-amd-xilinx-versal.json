@@ -1,0 +1,20 @@
+{
+  "type": "devicetree",
+  "name": "xlnx xlnx,versal-vek280",
+  "compatible": "xlnx,versal-vek280-revB",
+  "hwids": [
+    "ada08389-64fa-59f5-8b80-10ed310eba62",
+    "ec44f8dc-62c9-5280-8cf5-3e30009f8970",
+    "0e91353a-2107-5e22-a5b3-10863c0e48fc",
+    "b45dd812-3668-52b5-a84c-7a7af81d4315",
+    "90b709a5-8bf9-5ded-b7bd-8a2f6db0f1cb",
+    "27971549-3a00-5908-b4e1-3b34be8640f8",
+    "3937d6c6-288f-507b-abc9-364eaf0d663c",
+    "850f5b9b-052c-58f2-8bb4-1161a2dcc9f7",
+    "d4183363-23db-578d-b04d-e8e1080de384",
+    "745b41f2-0e8f-56ab-a949-304de98b1231",
+    "d62c9512-8df4-5529-96db-0bd43cef0864",
+    "4912fa7f-d61e-57bc-bc8c-ae6bc56d0e19",
+    "f73b34c4-4990-53ff-bc24-6f8e4858e4cd"
+  ]
+}
