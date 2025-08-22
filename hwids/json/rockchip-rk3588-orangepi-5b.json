@@ -1,0 +1,10 @@
+{
+    "type": "devicetree",
+    "name": "Shenzhen Xunlong Software Co., Ltd. OrangePi 5B",
+    "compatible": "rockchip,rk3588-orangepi-5b",
+    "hwids": [
+        "1bd43bd4-865f-5827-9316-c1ff0d6574e5",
+        "f8ef7def-07c7-59b6-9e29-efb28614e0e5"
+    ]
+}
+

@@ -1,0 +1,28 @@
+Computer Information
+--------------------
+Manufacturer: rockchip
+Family: rockchip,rk3588
+ProductName: Orange Pi 5B
+Hardware IDs
+------------
+not available as 'ProductSku' unknown
+not available as 'BiosVendor' unknown
+not available as 'BiosVendor' unknown
+not available as 'ProductSku' unknown
+not available as 'ProductSku' unknown
+{1bd43bd4-865f-5827-9316-c1ff0d6574e5}   <- Manufacturer + Family + ProductName
+not available as 'ProductSku' unknown
+not available as 'ProductSku' unknown
+not available as 'BaseboardManufacturer' unknown
+{f8ef7def-07c7-59b6-9e29-efb28614e0e5}   <- Manufacturer + ProductName
+not available as 'BaseboardManufacturer' unknown
+{fa466f50-4479-5347-b567-1bce5a8dd8f2}   <- Manufacturer + Family
+not available as 'EnclosureKind' unknown
+not available as 'BaseboardManufacturer' unknown
+{87bea6c4-f5c5-58c5-a587-195e7c4caacf}   <- Manufacturer
+Extra Hardware IDs
+------------------
+not available as 'ProductSku' unknown
+not available as 'BiosVendor' unknown
+not available as 'BiosVendor' unknown
+
